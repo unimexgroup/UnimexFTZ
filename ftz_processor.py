@@ -37,9 +37,9 @@ from openpyxl.utils import get_column_letter
 MAX_ROWS_PER_SHEET = 998
 
 # Master manifest columns -- exact names as they appear in the client's export.
-# Each master column is matched against a list of accepted aliases. Aliases
-# are compared case-insensitively after stripping all whitespace, so
-# 'HSCODE', 'HS CODE', and 'hs code' all match. Add new aliases here when
+# Each master column is matched against a list of accepted aliases (primary),
+# then against keyword tokens as a fallback (secondary). Aliases are compared
+# case-insensitively after stripping all whitespace. Add new aliases here when
 # clients send files with slightly different headers.
 COL_ALIASES: dict[str, list[str]] = {
     "MWB":          ["MWB"],
@@ -49,6 +49,19 @@ COL_ALIASES: dict[str, list[str]] = {
     "Weight":       ["PARCEL WEIGHT", "WEIGHT"],
     "Quantity":     ["PRODUCT QTY", "TOTAL QTY", "QTY"],
     "Value":        ["TOTAL DECLARE VALUE"],
+}
+
+# Fallback keyword tokens: if no alias matches exactly, any header that
+# contains ALL tokens for a column (after normalizing) is accepted.
+# Tokens should be specific enough to avoid false positives.
+COL_KEYWORDS: dict[str, list[str]] = {
+    "MWB":        ["mwb"],
+    "Bag ID":     ["bag"],
+    "Tracking #": ["track"],
+    "HS Code":    ["hs"],
+    "Weight":     ["weight"],
+    "Quantity":   ["qty"],
+    "Value":      ["value"],
 }
 
 # Master sheets to try, in order of preference. '表1' is the full export;
@@ -72,16 +85,37 @@ def resolve_columns(df_columns: list[str]) -> dict[str, str] | None:
     """
     Map each canonical column (MWB, Bag ID, etc.) to the actual column name in
     the file. Returns None if any required column can't be found.
+
+    Matching runs in two passes:
+      1. Exact alias match (case-insensitive, whitespace-stripped).
+      2. Keyword fallback: any header whose normalized form contains all
+         tokens for that column (e.g. any header with "weight" maps to Weight).
+         The shortest matching header wins to avoid grabbing a catch-all column.
     """
     norm_to_actual: dict[str, str] = {_norm_header(c): str(c).strip() for c in df_columns}
     resolved: dict[str, str] = {}
     for canonical, aliases in COL_ALIASES.items():
         match = None
+
+        # Pass 1: exact alias
         for alias in aliases:
             actual = norm_to_actual.get(_norm_header(alias))
             if actual:
                 match = actual
                 break
+
+        # Pass 2: keyword fallback
+        if not match:
+            tokens = COL_KEYWORDS.get(canonical, [])
+            candidates = [
+                actual for norm, actual in norm_to_actual.items()
+                if all(t in norm for t in tokens)
+            ]
+            if candidates:
+                # prefer the shortest header (least likely to be a catch-all)
+                match = min(candidates, key=len)
+                print(f"    [INFO] '{canonical}' matched via keyword fallback -> '{match}'")
+
         if not match:
             return None  # missing required column
         resolved[canonical] = match
