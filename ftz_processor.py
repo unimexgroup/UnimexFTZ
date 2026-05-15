@@ -1,18 +1,19 @@
 """
 Unimex Customs - FTZ Separation Processor
 =========================================
-For each shipment (identified by a COSU... number), pairs the master manifest
-with its FTZ separation list, filters the master to only line items whose
-Bag ID appears in the separation list, then aggregates to one row per HS Code
-with summed Quantity, Weight, and Value.
+For each shipment (identified by a carrier bill-of-lading number, e.g.
+COSU..., EGLV...), pairs the master manifest with its FTZ separation list,
+filters the master to only line items whose Bag ID appears in the separation
+list, then aggregates to one row per HS Code with summed Quantity, Weight,
+and Value.
 
 Run:
     python ftz_processor.py                 # reads ./input, writes ./output
     python ftz_processor.py /path/in /path/out
 
 Drop both files (master + separation list) for any number of shipments into the
-input folder. The script pairs them up by the COSU shipment ID found in each
-file's contents -- filenames are not trusted.
+input folder. The script pairs them up by the shipment ID (SCAC + serial bill
+of lading) found in each file's contents -- filenames are not trusted.
 """
 
 from __future__ import annotations
@@ -71,7 +72,7 @@ MASTER_SHEET_PREFERENCE = ["表1", "0"]
 # ID patterns -- used to identify file role by content, not filename.
 RE_BAG      = re.compile(r"^ZXWR\d+$")
 RE_TRACKING = re.compile(r"^JMX\d+$")
-RE_COSU     = re.compile(r"COSU\d+")
+RE_SHIPMENT_ID = re.compile(r"\b[A-Z]{4}\d{8,}\b")
 
 
 def _norm_header(h: object) -> str:
@@ -142,13 +143,13 @@ def clean_id(value: object) -> str:
 @dataclass
 class MasterFile:
     path: Path
-    cosu: str
+    shipment_id: str
     sheet_name: str
 
 @dataclass
 class SeparationFile:
     path: Path
-    cosu: str
+    shipment_id: str
     bag_ids: set[str]
     tracking_numbers: set[str]  # diagnostic only; not used for filtering
 
@@ -171,20 +172,20 @@ def classify_file(path: Path) -> MasterFile | SeparationFile | None:
             continue
         resolved = resolve_columns(list(df_head.columns))
         if resolved is not None:
-            cosu = ""
+            shipment_id = ""
             mwb_col = resolved["MWB"]
             if len(df_head) > 0 and mwb_col in df_head.columns:
-                cosu = clean_id(df_head.iloc[0][mwb_col])
-            if not cosu:
-                m = RE_COSU.search(path.name)
-                cosu = m.group(0) if m else ""
-            if cosu:
-                return MasterFile(path=path, cosu=cosu, sheet_name=sheet_name)
+                shipment_id = clean_id(df_head.iloc[0][mwb_col])
+            if not shipment_id:
+                m = RE_SHIPMENT_ID.search(path.name)
+                shipment_id = m.group(0) if m else ""
+            if shipment_id:
+                return MasterFile(path=path, shipment_id=shipment_id, sheet_name=sheet_name)
 
     # --- Separation list? scan cells for ZXWR/JMX patterns ---
     bags: set[str] = set()
     tracks: set[str] = set()
-    cosu_found = ""
+    shipment_id_found = ""
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
         for row in ws.iter_rows(values_only=True):
@@ -196,18 +197,18 @@ def classify_file(path: Path) -> MasterFile | SeparationFile | None:
                     bags.add(s)
                 elif RE_TRACKING.match(s):
                     tracks.add(s)
-                elif not cosu_found:
-                    m = RE_COSU.search(s)
+                elif not shipment_id_found:
+                    m = RE_SHIPMENT_ID.search(s)
                     if m:
-                        cosu_found = m.group(0)
+                        shipment_id_found = m.group(0)
 
     if bags:  # contains at least one ZXWR... = separation list
-        if not cosu_found:
-            m = RE_COSU.search(path.name)
-            cosu_found = m.group(0) if m else ""
+        if not shipment_id_found:
+            m = RE_SHIPMENT_ID.search(path.name)
+            shipment_id_found = m.group(0) if m else ""
         return SeparationFile(
             path=path,
-            cosu=cosu_found,
+            shipment_id=shipment_id_found,
             bag_ids=bags,
             tracking_numbers=tracks,
         )
@@ -411,40 +412,40 @@ def run(in_dir: Path, out_dir: Path) -> int:
     for path in files:
         result = classify_file(path)
         if isinstance(result, MasterFile):
-            print(f"  [MASTER] {path.name}  ->  {result.cosu}")
-            if result.cosu in masters:
-                print(f"    [WARN] duplicate master for {result.cosu}; overwriting")
-            masters[result.cosu] = result
+            print(f"  [MASTER] {path.name}  ->  {result.shipment_id}")
+            if result.shipment_id in masters:
+                print(f"    [WARN] duplicate master for {result.shipment_id}; overwriting")
+            masters[result.shipment_id] = result
         elif isinstance(result, SeparationFile):
-            print(f"  [SEP   ] {path.name}  ->  {result.cosu}  "
+            print(f"  [SEP   ] {path.name}  ->  {result.shipment_id}  "
                   f"({len(result.bag_ids)} bag(s))")
-            if result.cosu in separations:
-                print(f"    [WARN] duplicate separation list for {result.cosu}; overwriting")
-            separations[result.cosu] = result
+            if result.shipment_id in separations:
+                print(f"    [WARN] duplicate separation list for {result.shipment_id}; overwriting")
+            separations[result.shipment_id] = result
         else:
             print(f"  [?????] {path.name}  (not recognized -- check the file)")
             unrecognized.append(path)
 
     print()
-    all_cosus = set(masters) | set(separations)
+    all_shipment_ids = set(masters) | set(separations)
     processed = skipped = 0
-    for cosu in sorted(all_cosus):
-        if cosu not in masters:
-            print(f"  [SKIP] {cosu}: separation list found but no master manifest")
+    for shipment_id in sorted(all_shipment_ids):
+        if shipment_id not in masters:
+            print(f"  [SKIP] {shipment_id}: separation list found but no master manifest")
             skipped += 1
             continue
-        if cosu not in separations:
-            print(f"  [SKIP] {cosu}: master found but no separation list")
+        if shipment_id not in separations:
+            print(f"  [SKIP] {shipment_id}: master found but no separation list")
             skipped += 1
             continue
-        out_path = out_dir / f"{cosu}_FTZ.xlsx"
+        out_path = out_dir / f"{shipment_id}_FTZ.xlsx"
         try:
-            msg = process_shipment(masters[cosu], separations[cosu], out_path)
-            print(f"  [OK  ] {cosu} -> {out_path.name}")
+            msg = process_shipment(masters[shipment_id], separations[shipment_id], out_path)
+            print(f"  [OK  ] {shipment_id} -> {out_path.name}")
             print(f"         {msg}")
             processed += 1
         except Exception as e:
-            print(f"  [FAIL] {cosu}: {e}")
+            print(f"  [FAIL] {shipment_id}: {e}")
             skipped += 1
 
     print(f"\n{'=' * 60}")
