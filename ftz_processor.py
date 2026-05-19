@@ -71,8 +71,8 @@ MASTER_SHEET_PREFERENCE = ["表1", "0"]
 
 # ID patterns -- used to identify file role by content, not filename.
 RE_BAG      = re.compile(r"^ZXWR\d+$")
-RE_TRACKING = re.compile(r"^JMX\d+$")
-RE_SHIPMENT_ID = re.compile(r"\b[A-Z]{4}\d{8,}\b")
+RE_TRACKING = re.compile(r"\bJMX\d+\b")
+RE_SHIPMENT_ID = re.compile(r"(?<![A-Z])[A-Z]{4}\d{8,}(?!\d)")
 
 
 def _norm_header(h: object) -> str:
@@ -195,7 +195,7 @@ def classify_file(path: Path) -> MasterFile | SeparationFile | None:
                 s = clean_id(cell)
                 if RE_BAG.match(s):
                     bags.add(s)
-                elif RE_TRACKING.match(s):
+                elif RE_TRACKING.search(str(cell)):
                     tracks.add(s)
                 elif not shipment_id_found:
                     m = RE_SHIPMENT_ID.search(s)
