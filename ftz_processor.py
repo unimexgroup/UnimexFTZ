@@ -72,7 +72,7 @@ MASTER_SHEET_PREFERENCE = ["表1", "0"]
 # ID patterns -- used to identify file role by content, not filename.
 RE_BAG      = re.compile(r"^ZXWR\d+$")
 RE_TRACKING = re.compile(r"\bJMX\d+\b")
-RE_SHIPMENT_ID = re.compile(r"(?<![A-Z])[A-Z]{4}\d{8,}(?!\d)")
+RE_SHIPMENT_ID = re.compile(r"(?<![A-Z])[A-Z]{4,7}\d{8,}(?!\d)")
 
 
 def _norm_header(h: object) -> str:
