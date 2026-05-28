@@ -17,6 +17,13 @@ if errorlevel 1 (
 )
 
 echo.
+echo === Syncing ftz_processor.py to docs\ for web version ===
+copy /Y ftz_processor.py docs\ftz_processor.py >nul
+if errorlevel 1 (
+    echo [WARN] could not sync docs\ftz_processor.py -- web version may be stale
+)
+
+echo.
 echo === Building executable with PyInstaller ===
 REM --onefile    : produce a single .exe instead of a folder
 REM --console    : keep the console window (we want users to see output)
