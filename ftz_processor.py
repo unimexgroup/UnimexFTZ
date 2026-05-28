@@ -427,6 +427,36 @@ def run(in_dir: Path, out_dir: Path) -> int:
             unrecognized.append(path)
 
     print()
+
+    # Reconcile ids that differ only by a carrier prefix -- e.g. the master
+    # records the MWB as bare digits ('2323289462') while the separation list
+    # carries the prefixed form ('OOLU2323289462'). Re-key the shorter side
+    # under the longer id so they pair up. Only merge when exactly one
+    # candidate matches; ambiguous cases are left unpaired with a warning.
+    for mid in [m for m in masters if m not in separations]:
+        candidates = [s for s in separations
+                      if s != mid and s.endswith(mid) and s not in masters]
+        if len(candidates) == 1:
+            sid = candidates[0]
+            masters[sid] = masters.pop(mid)
+            print(f"  [INFO] paired master '{mid}' with separation '{sid}' "
+                  f"(matched by suffix)")
+        elif len(candidates) > 1:
+            print(f"  [WARN] could not uniquely pair '{mid}' "
+                  f"-- multiple possible matches")
+
+    for sid in [s for s in separations if s not in masters]:
+        candidates = [m for m in masters
+                      if m != sid and m.endswith(sid) and m not in separations]
+        if len(candidates) == 1:
+            mid = candidates[0]
+            separations[mid] = separations.pop(sid)
+            print(f"  [INFO] paired master '{mid}' with separation '{sid}' "
+                  f"(matched by suffix)")
+        elif len(candidates) > 1:
+            print(f"  [WARN] could not uniquely pair '{sid}' "
+                  f"-- multiple possible matches")
+
     all_shipment_ids = set(masters) | set(separations)
     processed = skipped = 0
     for shipment_id in sorted(all_shipment_ids):
