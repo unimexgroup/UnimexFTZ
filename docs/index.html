@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Unimex FTZ Processor</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Unimex FTZ Processor</h1>
+  <div id="status" class="status">Loading...</div>
+</header>
+
+<main class="layout">
+
+  <section class="pane drop-pane">
+    <div id="dropzone" class="dropzone" tabindex="0">
+      <div class="dropzone-inner">
+        <svg viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
+          <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/>
+        </svg>
+        <p class="dropzone-title">Drop shipment files here</p>
+        <p class="dropzone-sub">Master manifest + separation list, for one or more shipments.</p>
+        <button id="picker-btn" type="button" class="btn btn-secondary">Or choose files...</button>
+        <input id="file-input" type="file" multiple accept=".xlsx,.xls,.xlsm" hidden />
+      </div>
+    </div>
+    <div id="run-info" class="run-info" hidden></div>
+  </section>
+
+  <section class="pane results-pane">
+    <div class="results-header">
+      <h2>Results</h2>
+      <button id="download-all" type="button" class="btn btn-primary" hidden>
+        Download all (.zip)
+      </button>
+    </div>
+    <div id="results" class="results">
+      <p class="empty">No files processed yet.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <a href="README.txt" target="_blank" rel="noopener">README</a>
+  <span class="sep">·</span>
+  <a href="UnimexFTZ.exe - Changelog.txt" target="_blank" rel="noopener">Changelog</a>
+  <span class="sep">·</span>
+  <a href="https://github.com/" target="_blank" rel="noopener" id="repo-link">Source</a>
+</footer>
+
+<dialog id="preview-modal" class="modal">
+  <div class="modal-head">
+    <h3 id="preview-title">Preview</h3>
+    <button type="button" class="btn btn-ghost" id="preview-close" aria-label="Close">✕</button>
+  </div>
+  <div id="preview-body" class="modal-body"></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,67 @@
+UnimexFTZ.exe - Changelog
+==========================
+v1.6.0 - 2026-05-28
+-------------------
+Fixed:
+- Shipments where the master manifest's MWB column has bare digits 
+  (e.g. "2323289462") while the separation list has the prefixed form 
+  (e.g. "OOLU2323289462") are now paired correctly. The script matches
+  IDs by suffix when one is a prefixed version of the other.
+v1.5.0 - 2026-05-20
+-------------------
+Fixed:
+- Shipment IDs with prefixes longer than 4 letters (e.g., ZIMUSHH for
+  Zim Integrated Shipping) are now recognized. The script now handles
+  carrier prefixes between 4 and 7 letters in length.
+v1.4.0 - 2026-05-19
+-------------------
+Fixed:
+- Shipment IDs preceded by a letter (e.g. in filenames like
+  "Estatus_de_GuíasEGLV...") now parse correctly. The previous
+  word-boundary regex didn't fire when a letter sat directly before
+  the carrier prefix.
+- Tracking numbers embedded in mixed-text cells (e.g. cells containing
+  notes alongside a JMX number) are now detected for diagnostic logs.
+v1.3.0 - 2026-05-15
+-------------------
+Added:
+- Support for shipment ID formats from any shipping line, not just COSCO.
+  Previously the script only recognized "COSU..." identifiers; it now
+  handles the standard 4-letter-prefix + digits format used by all major
+  carriers (EGLV for Evergreen, MAEU for Maersk, HLCU for Hapag-Lloyd,
+  MSCU for MSC, etc.).
+
+v1.2.0 - 2026-05-14
+-------------------
+Added:
+- New "Country of Origin" column appended to output (after "Charges"),
+  populated with "CN" on every row.
+
+v1.1.0 - 2026-05-14
+-------------------
+Fixed:
+- Master manifest files were not recognized when client used alternate
+  column header names (e.g. "WEIGHT" vs "PARCEL WEIGHT", "HSCODE" vs
+  "HS CODE", "TOTAL QTY" vs "PRODUCT QTY"). Column matching is now
+  case-insensitive and whitespace-insensitive with an alias list.
+
+v1.0.0 - 2026-05-13
+-------------------
+Initial release.
+Features:
+- Pairs master manifest files with their FTZ separation lists based on
+  COSU shipment ID (filename-independent).
+- Filters master line items by Bag ID against separation list.
+- Aggregates output to one row per HS Code with summed Quantity,
+  Weight, and Value.
+- Applies round-up-to-1 rule on aggregated Weight and Value totals.
+- Adds fixed columns: Zone = "P", Charges = 3.
+- Outputs sorted ascending by HS Code, split into 998-row sheets if
+  exceeded.
+- Auto-creates input/, output/, and logs/ folders next to the .exe.
+- Writes timestamped log file for every run.
+
+Built with:
+- Python 3.x
+- pandas, openpyxl
+- Packaged as standalone Windows executable via PyInstaller

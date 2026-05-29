@@ -1,0 +1,26 @@
+# Build artifacts
+UnimexFTZ.exe
+/build/
+/dist/
+*.spec.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Real shipping data (do not publish)
+/input/
+/output/
+
+# Scratch / debug
+_inspect.py
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
