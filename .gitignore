@@ -1,5 +1,6 @@
 # Build artifacts
 UnimexFTZ.exe
+UnimexAir.exe
 /build/
 /dist/
 *.spec.bak

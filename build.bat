@@ -24,7 +24,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo === Building executable with PyInstaller ===
+echo === Building OCEAN executable with PyInstaller ===
 REM --onefile    : produce a single .exe instead of a folder
 REM --console    : keep the console window (we want users to see output)
 REM --name       : sets the output filename (UnimexFTZ.exe)
@@ -32,7 +32,18 @@ REM --clean      : wipe PyInstaller caches first to avoid stale builds
 python -m PyInstaller --onefile --console --clean --name UnimexFTZ ftz_processor.py
 if errorlevel 1 (
     echo.
-    echo [ERROR] PyInstaller failed. See messages above.
+    echo [ERROR] PyInstaller failed building UnimexFTZ. See messages above.
+    pause
+    exit /b 1
+)
+
+echo.
+echo === Building AIR executable with PyInstaller ===
+REM Separate program for AIR shipments (999-######## MWB, CBZS bags).
+python -m PyInstaller --onefile --console --clean --name UnimexAir air_processor.py
+if errorlevel 1 (
+    echo.
+    echo [ERROR] PyInstaller failed building UnimexAir. See messages above.
     pause
     exit /b 1
 )
@@ -41,10 +52,12 @@ echo.
 echo ============================================================
 echo  Build complete!
 echo.
-echo  The .exe is at:  dist\UnimexFTZ.exe
+echo  The .exe files are at:
+echo    dist\UnimexFTZ.exe   (ocean)
+echo    dist\UnimexAir.exe   (air)
 echo.
-echo  To distribute: copy UnimexFTZ.exe + README.txt to wherever
-echo  the customs team will run it.
+echo  To distribute: copy the relevant .exe + README.txt to
+echo  wherever the customs team will run it.
 echo ============================================================
 echo.
 pause
