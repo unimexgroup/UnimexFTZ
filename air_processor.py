@@ -30,6 +30,7 @@ import re
 import sys
 import traceback
 import unicodedata
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -38,6 +39,13 @@ import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+
+# Some client exports (e.g. the "By SKU" masters) are saved without a default
+# style, which makes openpyxl emit a harmless "Workbook contains no default
+# style" UserWarning every time such a file is opened. Because we tee stderr
+# into the run log, those warnings would clutter the log for end users. Suppress
+# just that one warning; all other warnings still surface.
+warnings.filterwarnings("ignore", message="Workbook contains no default style")
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -78,14 +86,17 @@ COL_KEYWORDS: dict[str, list[str]] = {
 MASTER_SHEET_PREFERENCE = ["sheet1", "表1", "0"]
 
 # ID patterns -- used to identify file role by content, not filename.
-#   Bag IDs are CBZS-prefixed for air (ocean used ZXWR).
+#   Bag IDs are a 4-letter consolidator prefix + digits. The prefix varies by
+#   consolidator (e.g. CBZS, ADAS), so match any 4 uppercase letters + digits
+#   rather than a single hard-coded prefix.
 #   Tracking numbers are unchanged (JMX...).
-#   Shipment IDs (MWB) look like "999-92338816": literal "999-", a hyphen, then
-#   8 digits, with no carrier letters. The full match -- including "999-" and
-#   the dash -- is the shipment ID.
-RE_BAG      = re.compile(r"^CBZS\d+$")
+#   Shipment IDs (MWB / air waybill) look like "369-10313494": a 3-digit airline
+#   prefix, a hyphen, then an 8-digit serial. The airline prefix varies (369,
+#   999, ...), so match any 3 digits + "-" + 8 digits. The full match -- prefix,
+#   dash and serial -- is the shipment ID.
+RE_BAG      = re.compile(r"^[A-Z]{4}\d+$")
 RE_TRACKING = re.compile(r"\bJMX\d+\b")
-RE_SHIPMENT_ID = re.compile(r"999-\d{8}")
+RE_SHIPMENT_ID = re.compile(r"\d{3}-\d{8}")
 
 
 def _norm_header(h: object) -> str:

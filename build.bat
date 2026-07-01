@@ -39,7 +39,7 @@ if errorlevel 1 (
 
 echo.
 echo === Building AIR executable with PyInstaller ===
-REM Separate program for AIR shipments (999-######## MWB, CBZS bags).
+REM Separate program for AIR shipments (###-######## MWB, 4-letter bag prefixes).
 python -m PyInstaller --onefile --console --clean --name UnimexAir air_processor.py
 if errorlevel 1 (
     echo.

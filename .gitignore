@@ -16,6 +16,7 @@ env/
 # Real shipping data (do not publish)
 /input/
 /output/
+/logs/
 
 # Scratch / debug
 _inspect.py
