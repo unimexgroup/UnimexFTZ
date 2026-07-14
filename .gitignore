@@ -17,6 +17,7 @@ env/
 /input/
 /output/
 /logs/
+/issues/
 
 # Scratch / debug
 _inspect.py

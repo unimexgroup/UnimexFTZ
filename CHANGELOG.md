@@ -6,6 +6,11 @@ All notable changes to the FTZ Customs Declaration Processor.
 
 ## Air Processor (`UnimexAir.exe`)
 
+### [v1.2.0] — 2026-07-14
+
+**Fixed**
+- Shipments whose ID is a carrier booking reference (e.g. `ZIMUSHH32215153`) instead of an air waybill (`999-########`) are now paired correctly. The separation list's ID is read from its filename; previously the filename parser only recognized the `###-########` waybill format, so a separation list named `ZIMUSHH32215153.xlsx` was reported "no shipment ID" and the shipment was skipped. Booking references (4-letter carrier prefix + letters/digits) are now recognized as a fallback, with the air-waybill format still tried first.
+
 ### [v1.1.0] — 2026-07-01
 
 **Fixed**

@@ -90,13 +90,36 @@ MASTER_SHEET_PREFERENCE = ["sheet1", "表1", "0"]
 #   consolidator (e.g. CBZS, ADAS), so match any 4 uppercase letters + digits
 #   rather than a single hard-coded prefix.
 #   Tracking numbers are unchanged (JMX...).
-#   Shipment IDs (MWB / air waybill) look like "369-10313494": a 3-digit airline
-#   prefix, a hyphen, then an 8-digit serial. The airline prefix varies (369,
-#   999, ...), so match any 3 digits + "-" + 8 digits. The full match -- prefix,
-#   dash and serial -- is the shipment ID.
+#   Shipment IDs come in two shapes:
+#     * Air waybill / MWB: "369-10313494" -- a 3-digit airline prefix, a hyphen,
+#       then an 8-digit serial. The airline prefix varies (369, 999, ...), so
+#       match any 3 digits + "-" + 8 digits.
+#     * Carrier booking reference: "ZIMUSHH32215153" -- a 4-letter carrier/SCAC
+#       prefix (ZIMU, ...) followed by letters and/or digits (>= 6 more chars).
+#       These have no hyphen and never appear inside the file, only the filename.
+#   The full match is the shipment ID.
 RE_BAG      = re.compile(r"^[A-Z]{4}\d+$")
 RE_TRACKING = re.compile(r"\bJMX\d+\b")
 RE_SHIPMENT_ID = re.compile(r"\d{3}-\d{8}")
+RE_BOOKING_ID  = re.compile(r"\b[A-Z]{4}[A-Z0-9]{6,}\b")
+
+
+def shipment_id_from_filename(name: str) -> str:
+    """
+    Extract the shipment ID from a separation-list filename. Tries the air
+    waybill form ("999-92338816") first, then a carrier booking reference
+    ("ZIMUSHH32215153"). Matching is case-insensitive for booking refs so a
+    lowercase filename still pairs with the uppercase MWB in the master.
+    Returns "" when neither pattern is present.
+    """
+    stem = Path(name).stem
+    m = RE_SHIPMENT_ID.search(stem)
+    if m:
+        return m.group(0)
+    m = RE_BOOKING_ID.search(stem.upper())
+    if m:
+        return m.group(0)
+    return ""
 
 
 def _norm_header(h: object) -> str:
@@ -214,8 +237,7 @@ def classify_file(path: Path) -> MasterFile | SeparationFile | None:
             if len(df_head) > 0 and mwb_col in df_head.columns:
                 shipment_id = clean_id(df_head.iloc[0][mwb_col])
             if not shipment_id:
-                m = RE_SHIPMENT_ID.search(path.name)
-                shipment_id = m.group(0) if m else ""
+                shipment_id = shipment_id_from_filename(path.name)
             if shipment_id:
                 return MasterFile(path=path, shipment_id=shipment_id, sheet_name=sheet_name)
 
@@ -238,8 +260,7 @@ def classify_file(path: Path) -> MasterFile | SeparationFile | None:
                     tracks.add(s)
 
     if bags:  # contains at least one CBZS... = separation list
-        m = RE_SHIPMENT_ID.search(path.name)
-        shipment_id_found = m.group(0) if m else ""
+        shipment_id_found = shipment_id_from_filename(path.name)
         return SeparationFile(
             path=path,
             shipment_id=shipment_id_found,
@@ -454,8 +475,9 @@ def run(in_dir: Path, out_dir: Path) -> int:
             print(f"  [SEP   ] {path.name}  ->  {result.shipment_id}  "
                   f"({len(result.bag_ids)} bag(s))")
             if not result.shipment_id:
-                print(f"    [WARN] no shipment ID (999-########) found in filename; "
-                      f"this separation list cannot be paired")
+                print(f"    [WARN] no shipment ID (e.g. 999-######## or a "
+                      f"carrier booking ref like ZIMUSHH32215153) found in "
+                      f"filename; this separation list cannot be paired")
             if result.shipment_id in separations:
                 print(f"    [WARN] duplicate separation list for {result.shipment_id}; overwriting")
             separations[result.shipment_id] = result
