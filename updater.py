@@ -124,36 +124,37 @@ def _download(url: str, dest: Path, expected_size: int) -> bool:
 # Windows locked-exe self-replace
 # ---------------------------------------------------------------------------
 def _spawn_swap_helper(exe: Path, new_file: Path) -> None:
-    """Write a throwaway .cmd in %TEMP% that waits for THIS process to exit,
-    moves the downloaded file over the running .exe, relaunches it, and deletes
-    itself. Spawned fully detached so it outlives us. All paths are baked in and
-    quoted so spaces in the install path can't break the script."""
-    pid = os.getpid()
-    helper = Path(tempfile.gettempdir()) / f"_update_{exe.stem}_{pid}.cmd"
+    """Write a throwaway .cmd in %TEMP% that swaps the downloaded file over the
+    running .exe once we release our lock on it, relaunches it, and deletes
+    itself. Spawned fully detached so it outlives us.
+
+    Robustness notes (learned the hard way):
+      * We do NOT wait on our PID with ``tasklist``/``find`` -- a Windows exe is
+        locked against replacement while it runs, so we simply retry ``move``:
+        it fails while we're still alive and succeeds the instant we exit. This
+        also avoids ``find``/``tasklist`` being shadowed by unrelated tools on
+        PATH.
+      * We sleep with a full-path ``ping`` rather than ``timeout``, because
+        ``timeout`` aborts immediately in a detached process with no console.
+      * ``move``, ``start`` and ``del`` are cmd built-ins, so nothing here
+        depends on PATH resolution. All paths are baked in and quoted so spaces
+        in the install path can't break the script.
+    """
+    helper = Path(tempfile.gettempdir()) / f"_update_{exe.stem}_{os.getpid()}.cmd"
+    ping = r"%SystemRoot%\System32\ping.exe"
     script = f"""@echo off
 setlocal
-set "PID={pid}"
 set "OLD={exe}"
 set "NEW={new_file}"
-
-:wait
-tasklist /FI "PID eq %PID%" 2>NUL | find "%PID%" >NUL
-if not errorlevel 1 (
-    timeout /t 1 /nobreak >NUL
-    goto wait
-)
 
 set /a tries=0
 :swap
 move /Y "%NEW%" "%OLD%" >NUL 2>&1
 if not errorlevel 1 goto relaunch
 set /a tries+=1
-if %tries% lss 15 (
-    timeout /t 1 /nobreak >NUL
-    goto swap
-)
-REM Give up after ~15s: leave the .new file so it can be swapped by hand.
-goto done
+if %tries% geq 60 goto done
+{ping} -n 2 127.0.0.1 >NUL
+goto swap
 
 :relaunch
 start "" "%OLD%"
