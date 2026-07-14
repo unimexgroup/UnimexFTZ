@@ -41,6 +41,10 @@ copy /Y ftz_processor.py docs\ftz_processor.py >nul
 if errorlevel 1 (
     echo [WARN] could not sync docs\ftz_processor.py -- web version may be stale
 )
+copy /Y _version.py docs\_version.py >nul
+if errorlevel 1 (
+    echo [WARN] could not sync docs\_version.py -- web version falls back to 0.0.0
+)
 
 echo.
 echo === Building OCEAN executable with PyInstaller ===
@@ -48,7 +52,9 @@ REM --onefile    : produce a single .exe instead of a folder
 REM --console    : keep the console window (we want users to see output)
 REM --name       : sets the output filename (UnimexFTZ.exe)
 REM --clean      : wipe PyInstaller caches first to avoid stale builds
-%PY% -m PyInstaller --onefile --console --clean --name UnimexFTZ ftz_processor.py
+REM --noupx      : do not UPX-pack (UPX-packed exes trip more antivirus engines,
+REM                which matters now that the exe self-downloads updates)
+%PY% -m PyInstaller --onefile --console --clean --noupx --name UnimexFTZ ftz_processor.py
 if errorlevel 1 (
     echo.
     echo [ERROR] PyInstaller failed building UnimexFTZ. See messages above.
@@ -60,7 +66,7 @@ echo.
 echo === Building AIR executable with PyInstaller ===
 REM Separate program for AIR shipments (###-######## MWB or a carrier
 REM booking reference like ZIMUSHH..., 4-letter bag prefixes).
-%PY% -m PyInstaller --onefile --console --clean --name UnimexAir air_processor.py
+%PY% -m PyInstaller --onefile --console --clean --noupx --name UnimexAir air_processor.py
 if errorlevel 1 (
     echo.
     echo [ERROR] PyInstaller failed building UnimexAir. See messages above.

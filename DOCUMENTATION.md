@@ -2,7 +2,7 @@
 
 **Prepared by:** Andres Torres (andres.torres@unimexgroup.com)
 **Date:** June 4, 2026
-**Version:** Ocean (UnimexFTZ) v1.6.0 · Air (UnimexAir) v1.1.0
+**Version:** Ocean (UnimexFTZ) v1.7.0 · Air (UnimexAir) v1.3.0
 
 ---
 
@@ -242,6 +242,64 @@ UnimexFTZ.exe "C:\path\to\input" "C:\path\to\output"
 
 ---
 
+## 3a. Automatic Updates & Releasing
+
+From Ocean v1.7.0 / Air v1.3.0 the executables update themselves from GitHub
+Releases, so a fix no longer has to be hand-copied to every machine.
+
+**How the self-update behaves (for end users)**
+
+- The tool checks for a new version **only after a run that had a problem** — a
+  skipped, failed, or unrecognized file (or a crash). A fully clean run never
+  contacts the network, so there's no slowdown when everything is working.
+- When a newer build exists it downloads it next to the current exe, waits for
+  the program to close, swaps the new exe into place, and relaunches — then the
+  fresh version reprocesses the `input\` folder, so files the old version
+  skipped now go through automatically.
+- If the machine is offline or GitHub can't be reached, it prints
+  `[update] ... Continuing on the current version.` and runs normally.
+
+**One-time setup on each machine**
+
+1. Install the current build (v1.7.0 / v1.3.0) **once, by hand**, into a
+   **user-writable folder** — e.g. `%LOCALAPPDATA%\Unimex\` or a subfolder of
+   Documents. Do *not* put it in `C:\Program Files\` (no write permission there,
+   so the exe couldn't replace itself).
+2. On first launch Windows SmartScreen may warn "unknown publisher" (the exes
+   are unsigned). Choose **More info → Run anyway**. This is a one-time prompt.
+
+From then on, every later version arrives automatically.
+
+**How Andres ships a new version (release procedure)**
+
+Releases are built and published by GitHub Actions
+(`.github/workflows/release.yml`) — no local build or manual upload needed.
+Example, shipping Ocean v1.7.1:
+
+1. Make the code fix on `master`.
+2. Bump `_version.py`: `OCEAN_VERSION = "1.7.1"` and add a `[v1.7.1]` entry to
+   `CHANGELOG.md`.
+3. `git commit -am "ocean: v1.7.1 - <summary>"` and `git push origin master`.
+4. `git tag ocean-v1.7.1` and `git push origin ocean-v1.7.1`.
+
+The workflow then verifies the tag matches `_version.py`, builds
+`UnimexFTZ.exe` on a Windows runner, and publishes the `ocean-v1.7.1` Release
+with the exe attached. Air is identical with `AIR_VERSION` and an `air-vX.Y.Z`
+tag. **The number in the tag must equal the number in `_version.py`, or the
+build fails on purpose.**
+
+> Requirements: the repository must be **public** (so machines download updates
+> without credentials), and whoever pushes the tag needs push access to
+> `andrestorres-unimex/UnimexFTZ`. Publishing the Release itself uses the CI's
+> built-in token — no personal login required.
+
+**Known limitation:** the exes are unsigned, so strict corporate antivirus /
+SmartScreen may block the auto-downloaded update on some machines. If that
+happens, the fix is an Authenticode code-signing certificate (a future step) or
+a per-folder Defender exclusion.
+
+---
+
 ## 4. Changelog
 
 ### Air Processor (`UnimexAir.exe`)
@@ -340,9 +398,12 @@ UnimexFTZ.exe "C:\path\to\input" "C:\path\to\output"
 |---|---|
 | `ftz_processor.py` | Ocean processor source. |
 | `air_processor.py` | Air processor source. |
+| `_version.py` | Single source of truth for both tools' version numbers. |
+| `updater.py` | Self-updater: checks GitHub Releases and swaps the exe in place. |
 | `build.bat` | One-step build script (installs deps, builds both `.exe`s). |
 | `requirements.txt` | Python dependencies (`pandas`, `openpyxl`, `pyinstaller`). |
 | `UnimexFTZ.spec` / `UnimexAir.spec` | PyInstaller build specifications. |
+| `.github/workflows/release.yml` | CI that builds the exe and publishes a Release when a version tag is pushed. |
 | `docs/` | Browser-based version (static web app) plus README and changelog. |
 | `input/` `output/` `logs/` | Working folders created at runtime (not committed). |
 

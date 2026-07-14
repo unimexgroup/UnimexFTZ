@@ -40,6 +40,13 @@ from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+# Single source of truth for the version (see _version.py). Guarded so a stray
+# copy without _version.py alongside it (e.g. a web/Pyodide context) still runs.
+try:
+    from _version import AIR_VERSION as __version__
+except Exception:
+    __version__ = "0.0.0"
+
 # Some client exports (e.g. the "By SKU" masters) are saved without a default
 # style, which makes openpyxl emit a harmless "Workbook contains no default
 # style" UserWarning every time such a file is opened. Because we tee stderr
@@ -548,7 +555,10 @@ def run(in_dir: Path, out_dir: Path) -> int:
         print(f"{len(unrecognized)} file(s) not recognized.")
     print(f"Output folder: {out_dir}")
     print('=' * 60)
-    return 0
+    # Report how many files did not go through cleanly. main() uses this to
+    # decide whether to check for an update -- a skipped/failed/unrecognized
+    # file is exactly the signal that a newer version might handle it.
+    return skipped + len(unrecognized)
 
 
 def main() -> int:
@@ -564,24 +574,38 @@ def main() -> int:
     sys.stdout = tee
     sys.stderr = tee
 
-    print(f"Unimex Air Processor (UnimexAir)")
+    print(f"Unimex Air Processor (UnimexAir)  v{__version__}")
     print(f"Run started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Log file: {log_path}")
     print()
 
-    exit_code = 1
+    problems = 0
     try:
-        exit_code = run(in_dir, out_dir)
+        problems = run(in_dir, out_dir)
     except Exception as e:
         print(f"\n[ERROR] Something went wrong: {e}")
         print(f"\nFull details (please send this log file to Andy):")
         traceback.print_exc()
-    finally:
-        sys.stdout = tee.terminal
-        sys.stderr = tee.terminal
-        tee.close()
-        pause_for_user()
-    return exit_code
+        problems = 1  # a crash is also a reason to look for a newer build
+
+    # Only check for updates when this run had trouble (skipped / failed /
+    # unrecognized files, or a crash). A clean run never touches the network.
+    # If a newer build installs, it relaunches and reprocesses the input --
+    # self-healing the files this version couldn't handle.
+    updated = False
+    if getattr(sys, "frozen", False) and problems > 0:
+        try:
+            import updater  # lazy import: keeps the docs/ Pyodide build working
+            updated = updater.check_and_update("air", "UnimexAir.exe", __version__)
+        except Exception as e:
+            print(f"[update] skipped ({type(e).__name__}).")
+
+    sys.stdout = tee.terminal
+    sys.stderr = tee.terminal
+    tee.close()
+    if not updated:
+        pause_for_user()  # on the update path the relaunched instance owns the UX
+    return 0
 
 
 if __name__ == "__main__":

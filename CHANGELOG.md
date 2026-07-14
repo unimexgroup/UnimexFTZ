@@ -6,6 +6,14 @@ All notable changes to the FTZ Customs Declaration Processor.
 
 ## Air Processor (`UnimexAir.exe`)
 
+### [v1.3.0] — 2026-07-14
+
+**Added**
+- **Automatic updates from GitHub Releases.** The exe now updates itself, so it no longer has to be re-copied to each machine by hand. To avoid wasting time when everything is working, it only checks for a new version on a run that had a problem — a skipped, failed, or unrecognized file (exactly when a newer version might handle it). If a newer build is found it downloads, installs, and restarts automatically, then reprocesses the input so the previously-skipped files go through. Clean runs never touch the network. If the machine is offline or GitHub is unreachable, it prints a short note and keeps running the current version.
+- Startup banner now shows the version (e.g. `Unimex Air Processor (UnimexAir)  v1.3.0`).
+
+*Note:* auto-update takes effect from this version forward — install v1.3.0 once (manually), and v1.3.1+ will arrive on their own. Install the exe in a **user-writable** folder (e.g. under Documents or `%LOCALAPPDATA%`), not Program Files, or it can't replace itself.
+
 ### [v1.2.0] — 2026-07-14
 
 **Fixed**
@@ -34,6 +42,14 @@ All notable changes to the FTZ Customs Declaration Processor.
 ---
 
 ## Ocean Processor (`UnimexFTZ.exe`)
+
+### [v1.7.0] — 2026-07-14
+
+**Added**
+- **Automatic updates from GitHub Releases.** Same mechanism as Air v1.3.0: the exe self-updates instead of being hand-copied to each machine. It only checks for a new version after a run that skipped, failed, or didn't recognize a file — clean runs never check. A newer build downloads, installs, and restarts automatically, then reprocesses the input. Offline/unreachable simply falls back to the current version with a short note.
+- Startup banner now shows the version (`Unimex FTZ Processor  v1.7.0`).
+
+*Note:* takes effect from this version forward — install v1.7.0 once (manually), then v1.7.1+ arrive automatically. Install in a **user-writable** folder (not Program Files) so the exe can replace itself.
 
 ### [v1.6.0] — 2026-05-28
 
