@@ -29,7 +29,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-OWNER = "andrestorres-unimex"
+OWNER = "unimexgroup"
 REPO = "UnimexFTZ"
 RELEASES_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases"
 

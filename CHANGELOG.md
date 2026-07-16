@@ -6,6 +6,11 @@ All notable changes to the FTZ Customs Declaration Processor.
 
 ## Air Processor (`UnimexAir.exe`)
 
+### [v1.3.1] — 2026-07-16
+
+**Fixed**
+- The repo moved from `andrestorres-unimex/UnimexFTZ` to `unimexgroup/UnimexFTZ`. The self-updater's hard-coded owner is updated to match, so already-installed exes keep auto-updating instead of relying on GitHub's transfer redirect indefinitely.
+
 ### [v1.3.0] — 2026-07-14
 
 **Added**
@@ -42,6 +47,11 @@ All notable changes to the FTZ Customs Declaration Processor.
 ---
 
 ## Ocean Processor (`UnimexFTZ.exe`)
+
+### [v1.8.1] — 2026-07-16
+
+**Fixed**
+- The repo moved from `andrestorres-unimex/UnimexFTZ` to `unimexgroup/UnimexFTZ`. The self-updater's hard-coded owner is updated to match, so already-installed exes keep auto-updating instead of relying on GitHub's transfer redirect indefinitely.
 
 ### [v1.8.0] — 2026-07-16
 
