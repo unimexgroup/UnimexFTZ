@@ -8,5 +8,5 @@ CHANGELOG entry, commit, then push a matching tag (``ocean-vX.Y.Z`` /
 refuses to build if the tag's number disagrees with the constant here.
 """
 
-OCEAN_VERSION = "1.7.0"
+OCEAN_VERSION = "1.8.0"
 AIR_VERSION = "1.3.0"

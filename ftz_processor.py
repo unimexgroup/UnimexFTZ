@@ -23,6 +23,7 @@ import re
 import sys
 import traceback
 import unicodedata
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -31,6 +32,10 @@ import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+
+# Some "By SKU" master exports ship without a default style; openpyxl warns
+# about it on every open. Harmless -- keep it out of the run log.
+warnings.filterwarnings("ignore", message="Workbook contains no default style")
 
 # Single source of truth for the version (see _version.py). Guarded so the
 # Pyodide web build (docs/), which imports this module without _version.py
@@ -73,9 +78,10 @@ COL_KEYWORDS: dict[str, list[str]] = {
     "Value":      ["value"],
 }
 
-# Master sheets to try, in order of preference. '表1' is the full export;
-# '0' is the same information in a different format.
-MASTER_SHEET_PREFERENCE = ["表1", "0"]
+# Master sheets to try, in order of preference (matched case-insensitively).
+# '表1' is the full Chinese export; '0' is the same information in a different
+# format; 'sheet1' covers the newer "By SKU" exports.
+MASTER_SHEET_PREFERENCE = ["表1", "0", "sheet1"]
 
 # ID patterns -- used to identify file role by content, not filename.
 RE_BAG      = re.compile(r"^ZXWR\d+$")
@@ -145,6 +151,17 @@ def clean_id(value: object) -> str:
     return "".join(s.split())
 
 
+def _resolve_sheet_name(wb, preferred: str) -> str | None:
+    """Return the workbook's actual sheet name matching `preferred`
+    case-insensitively, or None if absent. Newer "By SKU" exports use
+    'sheet1' while others use 'Sheet1'; matching loosely covers both."""
+    target = preferred.strip().lower()
+    for name in wb.sheetnames:
+        if str(name).strip().lower() == target:
+            return name
+    return None
+
+
 # ---------------------------------------------------------------------------
 # File classification
 # ---------------------------------------------------------------------------
@@ -171,8 +188,9 @@ def classify_file(path: Path) -> MasterFile | SeparationFile | None:
         return None
 
     # --- Master? look for the canonical header in a preferred sheet ---
-    for sheet_name in MASTER_SHEET_PREFERENCE:
-        if sheet_name not in wb.sheetnames:
+    for preferred in MASTER_SHEET_PREFERENCE:
+        sheet_name = _resolve_sheet_name(wb, preferred)
+        if sheet_name is None:
             continue
         try:
             df_head = pd.read_excel(path, sheet_name=sheet_name, nrows=2, dtype=object)

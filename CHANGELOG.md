@@ -43,6 +43,14 @@ All notable changes to the FTZ Customs Declaration Processor.
 
 ## Ocean Processor (`UnimexFTZ.exe`)
 
+### [v1.8.0] — 2026-07-16
+
+**Fixed**
+- **"By SKU" master manifests (sheet named `sheet1`) are now recognized.** Master detection previously only looked at sheets named `表1` or `0`; a master like `NLD_PVG_COSU6504476123(By SKU).xlsx` fell through to the bag-ID scan, was misclassified as a separation list, and overwrote the real separation file — so the shipment was skipped with "separation list found but no master manifest". Sheet names are now matched case-insensitively and `sheet1` is accepted, same as the Air processor has done since Air v1.0.0.
+
+**Changed**
+- The harmless openpyxl "Workbook contains no default style" warning (emitted by "By SKU" exports) is suppressed, matching Air v1.1.0.
+
 ### [v1.7.0] — 2026-07-14
 
 **Added**
